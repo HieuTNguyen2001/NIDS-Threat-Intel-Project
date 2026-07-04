@@ -1,0 +1,6 @@
+[Unit]
+Description=Periodic apt update for NIDS baseline traffic
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/apt update

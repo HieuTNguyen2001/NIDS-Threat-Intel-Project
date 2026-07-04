@@ -1,0 +1,7 @@
+[Unit]
+Description=Periodic ping burst for NIDS baseline traffic
+
+[Service]
+Type=oneshot
+ExecStart=/bin/ping -c 5 192.168.56.20
+ExecStart=/bin/ping -c 5 192.168.56.30

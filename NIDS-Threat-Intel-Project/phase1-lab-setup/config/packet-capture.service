@@ -1,0 +1,11 @@
+[Unit]
+Description=Continuous packet capture for NIDS baseline
+After=network.target
+
+[Service]
+ExecStart=/home/UbuntuMonitor/capture.sh
+Restart=always
+User = UbuntuMonitor
+
+[Install]
+WantedBy=multi-user.target
