@@ -101,3 +101,37 @@ On Kali VM - same pattern for 'ping', so it no longer depends on a logged-in ter
 - **Root cause**: stale package index caused by an untrusted repo signature (NO_PUBKEY ED65462EC8D5E4C5) - apt was silently using old cached index data
 - **Fix**: installed kali-archive-keyring / re-imported the archive signing key
 - **Verification**: 'sudo apt update' completed with no GPG warnings 
+
+##Issue 4: Systemd Timer File Created in Wrong Directory
+- **Symptom**: Timer unit created for baseline traffic generation (dns-generator.timer) did not appear when running 'systemctl list-timers', and 'systemctl enable' did not produce the expected symlink behavior.
+- **Diagnosis**: Ran 'ls -la /etc/systemd/system/dns-generator.timer' and confirmed the file existed at that path rather than the expected '/etc/systemd/system/' directory.
+- **Root Cause**: File was created with 'sudo nano /etc/systemd/dns-generator.timer', omitting the '/system' subdirectory. Systemd only reads unit files from '/etc/systemd/system/' (for admin0created units) - files placed directly in '/etc/systemd/' are not loaded.
+- **Fix**: Moved the file to the correct path and reloaded the system daemon: 
+'''bash
+  sudo mv /etc/systemd/system/dns-generator/timer /etc/systemd/system/dns-generator.timer
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now dns-generator.timer
+'''
+- **Verification**:
+'''bash
+  systemctl list-timers | grep dns-generator
+  systemctl status dns-generator.timer
+'''
+Confirmed 'Loaded: loaded (/etc/systemd/system/dns-generator.timer; enabled; ...)' and next scheduled run time appeared in 'list-timers' output.
+
+##Issue 5: Timer Failed to Start - Missing Trigger Service
+- **Symptom**: On UbuntuVictim VM, running 'sudo systemctl enable --now http-generator.timer' produced the error:
+		htttp-generator.timer:Refusing to start, unit http-generator.service to trigger not loaded. Failed to start http-generator.timer - Run HTTP traffic generator periodically.
+- **Diagnosis**: Ran 'ls -la /etc/systemd/system/http-generator.service' and confirmed the file was not present at that path. A 'find /etc/systemd -name "http-generator*"' search was used to locate the misplaced file.
+- **Root Cause**: A systemd '.timer' unit requires a matching '.service' unit of the same base name to exist in '/etc/systemd/system/' before it can be enabled. The service file had either no been created in the correct directory or was affected by the same path mistake as Issue 5.
+- **Fix:**: Located and moved the service file to the correct path (or recreated it if missing). then reload stystemd:
+'''bash
+  sudo mv /etc/systemd/http-generator.service /etc/systemd/system/http-generator.service
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now http-generator.timer
+'''
+- ***Verification**:
+'''bash
+  systemctl status http-generator.timer
+'''
+ Confirmed timer loaded and active with no errors, and corresponding 'http-generator.service' executed successfully on next scheduled trigger, visible via 'journalctl -u http-generator.service'.
